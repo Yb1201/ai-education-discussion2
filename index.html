@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 교육 토론 플랫폼 (하이브리드 버전)</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .mode-indicator {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .mode-indicator.firebase {
+            background: #4caf50;
+            color: white;
+        }
+
+        .mode-indicator.local {
+            background: #ff9800;
+            color: white;
+        }
+
+        .mode-indicator::before {
+            content: '●';
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #1565c0;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 30px;
+            background: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .tab-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .content-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .topic-title {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .topic-description {
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .section-title {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin: 30px 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '●';
+            color: #667eea;
+        }
+
+        .discussion-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button[type="submit"]:hover {
+            transform: scale(1.05);
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .comments-list {
+            margin-top: 20px;
+        }
+
+        .comment-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .comment-author {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .comment-date {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .comment-text {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .policy-card {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8eaff 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #667eea;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .policy-title {
+            color: #667eea;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .policy-content {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .vote-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .vote-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .vote-btn.agree {
+            background: #4caf50;
+            color: white;
+        }
+
+        .vote-btn.disagree {
+            background: #f44336;
+            color: white;
+        }
+
+        .vote-count {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .case-study {
+            background: #fff5f5;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .case-study-title {
+            color: #f44336;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .solution {
+            background: #f0f8ff;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+
+        .solution-title {
+            color: #2196f3;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2e7d32;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #c62828;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // ==========================================
+        // Firebase 설정 (선택사항)
+        // ==========================================
+        // Firebase를 사용하려면 아래 설정을 Firebase 콘솔에서 복사하여 붙여넣으세요
+        // 설정하지 않으면 자동으로 localStorage를 사용합니다
+        
+        const firebaseConfig = {
+            apiKey: "여기에_Firebase_API_키를_입력하세요",
+            authDomain: "여기에_프로젝트_ID.firebaseapp.com",
+            databaseURL: "https://여기에_프로젝트_ID.firebaseio.com",
+            projectId: "여기에_프로젝트_ID",
+            storageBucket: "여기에_프로젝트_ID.appspot.com",
+            messagingSenderId: "여기에_메시징_ID",
+            appId: "여기에_앱_ID"
+        };
+
+        // Firebase 설정 여부 확인
+        const isFirebaseConfigured = !firebaseConfig.apiKey.includes('여기에');
+        
+        // ==========================================
+        // 데이터 저장/로드 유틸리티
+        // ==========================================
+        const STORAGE_KEY = 'ai_education_discussion_data';
+
+        // localStorage에서 데이터 로드
+        const loadFromLocalStorage = () => {
+            try {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    return JSON.parse(savedData);
+                }
+            } catch (error) {
+                console.error('localStorage 로드 오류:', error);
+            }
+            return { comments: { topic1: [], topic2: [] }, policies: [], cases: [] };
+        };
+
+        // localStorage에 데이터 저장
+        const saveToLocalStorage = (data) => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } catch (error) {
+                console.error('localStorage 저장 오류:', error);
+            }
+        };
+
+        function DiscussionPlatform() {
+            const [activeTab, setActiveTab] = useState('topic1');
+            const [comments, setComments] = useState({ topic1: [], topic2: [] });
+            const [policies, setPolicies] = useState([]);
+            const [cases, setCases] = useState([]);
+            const [success, setSuccess] = useState(null);
+            const [error, setError] = useState(null);
+            const [mode, setMode] = useState('local'); // 'local' or 'firebase'
+            const [firebaseDB, setFirebaseDB] = useState(null);
+
+            // 초기 데이터 로드
+            useEffect(() => {
+                if (isFirebaseConfigured) {
+                    // Firebase 설정이 있으면 Firebase 사용
+                    try {
+                        if (!firebase.apps.length) {
+                            firebase.initializeApp(firebaseConfig);
+                        }
+                        const database = firebase.database();
+                        setFirebaseDB(database);
+                        setMode('firebase');
+
+                        // 실시간 리스너 설정
+                        const commentsRef = database.ref('comments');
+                        const policiesRef = database.ref('policies');
+                        const casesRef = database.ref('cases');
+
+                        commentsRef.on('value', (snapshot) => {
+                            const data = snapshot.val();
+                            if (data) {
+                                // Firebase 데이터 구조 변환
+                                const formattedComments = {
+                                    topic1: data.topic1 ? Object.values(data.topic1) : [],
+                                    topic2: data.topic2 ? Object.values(data.topic2) : []
+                                };
+                                setComments(formattedComments);
+                            }
+                        });
+
+                        policiesRef.on('value', (snapshot) => {
+                            const data = snapshot.val();
+                            if (data) {
+                                setPolicies(Object.values(data));
+                            }
+                        });
+
+                        casesRef.on('value', (snapshot) => {
+                            const data = snapshot.val();
+                            if (data) {
+                                setCases(Object.values(data));
+                            }
+                        });
+
+                        return () => {
+                            commentsRef.off();
+                            policiesRef.off();
+                            casesRef.off();
+                        };
+                    } catch (err) {
+                        console.error('Firebase 초기화 오류:', err);
+                        setError('Firebase 연결 실패. localStorage 모드로 전환합니다.');
+                        setMode('local');
+                        const localData = loadFromLocalStorage();
+                        setComments(localData.comments);
+                        setPolicies(localData.policies);
+                        setCases(localData.cases);
+                    }
+                } else {
+                    // Firebase 설정이 없으면 localStorage 사용
+                    setMode('local');
+                    const localData = loadFromLocalStorage();
+                    setComments(localData.comments);
+                    setPolicies(localData.policies);
+                    setCases(localData.cases);
+                }
+            }, []);
+
+            // localStorage 모드일 때 데이터 변경 시 자동 저장
+            useEffect(() => {
+                if (mode === 'local') {
+                    saveToLocalStorage({ comments, policies, cases });
+                }
+            }, [comments, policies, cases, mode]);
+
+            const showSuccess = (message) => {
+                setSuccess(message);
+                setTimeout(() => setSuccess(null), 3000);
+            };
+
+            const showError = (message) => {
+                setError(message);
+                setTimeout(() => setError(null), 5000);
+            };
+
+            // 의견 등록
+            const handleCommentSubmit = async (e, topic) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                const newComment = {
+                    author: formData.get('author'),
+                    text: formData.get('comment'),
+                    date: new Date().toLocaleString('ko-KR'),
+                    timestamp: Date.now()
+                };
+
+                try {
+                    if (mode === 'firebase' && firebaseDB) {
+                        // Firebase에 저장
+                        await firebaseDB.ref(`comments/${topic}`).push(newComment);
+                    } else {
+                        // localStorage에 저장
+                        const newComments = {
+                            ...comments,
+                            [topic]: [...comments[topic], newComment]
+                        };
+                        setComments(newComments);
+                    }
+                    
+                    e.target.reset();
+                    showSuccess('의견이 성공적으로 등록되었습니다!');
+                } catch (err) {
+                    showError('의견 등록 실패: ' + err.message);
+                }
+            };
+
+            // 정책 제안
+            const handlePolicySubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                const newPolicy = {
+                    id: Date.now(),
+                    title: formData.get('policyTitle'),
+                    content: formData.get('policyContent'),
+                    agree: 0,
+                    disagree: 0,
+                    timestamp: Date.now()
+                };
+
+                try {
+                    if (mode === 'firebase' && firebaseDB) {
+                        // Firebase에 저장
+                        await firebaseDB.ref('policies').push(newPolicy);
+                    } else {
+                        // localStorage에 저장
+                        setPolicies([...policies, newPolicy]);
+                    }
+                    
+                    e.target.reset();
+                    showSuccess('정책이 성공적으로 제안되었습니다!');
+                } catch (err) {
+                    showError('정책 제안 실패: ' + err.message);
+                }
+            };
+
+            // 사례 등록
+            const handleCaseSubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                
+                const newCase = {
+                    id: Date.now(),
+                    problem: formData.get('problem'),
+                    solution: formData.get('solution'),
+                    timestamp: Date.now()
+                };
+
+                try {
+                    if (mode === 'firebase' && firebaseDB) {
+                        // Firebase에 저장
+                        await firebaseDB.ref('cases').push(newCase);
+                    } else {
+                        // localStorage에 저장
+                        setCases([...cases, newCase]);
+                    }
+                    
+                    e.target.reset();
+                    showSuccess('사례가 성공적으로 등록되었습니다!');
+                } catch (err) {
+                    showError('사례 등록 실패: ' + err.message);
+                }
+            };
+
+            // 투표
+            const handleVote = async (policyId, voteType) => {
+                try {
+                    if (mode === 'firebase' && firebaseDB) {
+                        // Firebase에서 해당 정책 찾기 및 업데이트
+                        const policiesRef = firebaseDB.ref('policies');
+                        const snapshot = await policiesRef.once('value');
+                        const policiesData = snapshot.val();
+                        
+                        if (policiesData) {
+                            Object.keys(policiesData).forEach(key => {
+                                if (policiesData[key].id === policyId) {
+                                    firebaseDB.ref(`policies/${key}/${voteType}`).set(
+                                        policiesData[key][voteType] + 1
+                                    );
+                                }
+                            });
+                        }
+                    } else {
+                        // localStorage에서 업데이트
+                        const newPolicies = policies.map(policy => {
+                            if (policy.id === policyId) {
+                                return {
+                                    ...policy,
+                                    [voteType]: policy[voteType] + 1
+                                };
+                            }
+                            return policy;
+                        });
+                        setPolicies(newPolicies);
+                    }
+                    
+                    showSuccess('투표가 완료되었습니다!');
+                } catch (err) {
+                    showError('투표 실패: ' + err.message);
+                }
+            };
+
+            return (
+                <div className="container">
+                    <header>
+                        <h1>🎓 AI 교육 토론 플랫폼</h1>
+                        <p className="subtitle">함께 생각하고, 함께 해결하는 AI 교육의 미래</p>
+                        <div className={`mode-indicator ${mode}`}>
+                            {mode === 'firebase' ? '🔥 Firebase 실시간 동기화' : '💾 로컬 저장 모드'}
+                        </div>
+                    </header>
+
+                    {mode === 'local' && (
+                        <div className="info-box">
+                            <strong>ℹ️ 로컬 저장 모드:</strong><br/>
+                            데이터가 브라우저에 저장됩니다. Firebase를 설정하면 실시간 동기화가 가능합니다.<br/>
+                            Firebase 설정 방법은 Firebase_설정_가이드.md를 참조하세요.
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="success-message">
+                            ✅ {success}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="error-message">
+                            ❌ {error}
+                        </div>
+                    )}
+
+                    <div className="stats-container">
+                        <div className="stat-card">
+                            <div className="stat-number">{comments.topic1.length + comments.topic2.length}</div>
+                            <div className="stat-label">총 의견 수</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-number">{policies.length}</div>
+                            <div className="stat-label">제안된 정책</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-number">{cases.length}</div>
+                            <div className="stat-label">사례 분석</div>
+                        </div>
+                    </div>
+
+                    <div className="tabs">
+                        <button 
+                            className={`tab-button ${activeTab === 'topic1' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('topic1')}
+                        >
+                            발제 1: AI 교육 격차 문제
+                        </button>
+                        <button 
+                            className={`tab-button ${activeTab === 'topic2' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('topic2')}
+                        >
+                            발제 2: AI 교육 방향성
+                        </button>
+                    </div>
+
+                    {activeTab === 'topic1' && (
+                        <div>
+                            <div className="content-card">
+                                <h2 className="topic-title">발제 1: AI 교육 격차, 방치하면 디지털 계급사회로 이어진다</h2>
+                                <p className="topic-description">
+                                    인공지능 기술의 급속한 발전은 교육 현장에도 큰 영향을 미치고 있습니다. 
+                                    하지만 AI 교육에 대한 접근성의 차이는 새로운 형태의 교육 격차를 만들어내고 있으며, 
+                                    이는 장기적으로 디지털 계급사회로 이어질 수 있다는 우려가 제기되고 있습니다.
+                                </p>
+
+                                <div className="section-title">현재 상황 분석</div>
+                                <div className="discussion-section">
+                                    <p><strong>주요 이슈:</strong></p>
+                                    <ul style={{marginLeft: '20px', marginTop: '10px', lineHeight: '1.8'}}>
+                                        <li>지역별, 학교별 AI 교육 인프라의 격차</li>
+                                        <li>교사 역량의 불균형</li>
+                                        <li>가정 환경에 따른 AI 도구 접근성 차이</li>
+                                        <li>경제적 여건에 따른 사교육 의존도 증가</li>
+                                    </ul>
+                                </div>
+
+                                <div className="section-title">정책 제안 및 토론</div>
+                                <div className="discussion-section">
+                                    <form onSubmit={handlePolicySubmit}>
+                                        <div className="form-group">
+                                            <label>정책 제목</label>
+                                            <input type="text" name="policyTitle" required 
+                                                   placeholder="예: 모든 학교에 AI 교육 전담 교사 배치" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>정책 내용</label>
+                                            <textarea name="policyContent" required 
+                                                      placeholder="정책의 구체적인 내용, 기대 효과, 예상 예산 등을 작성해주세요"></textarea>
+                                        </div>
+                                        <button type="submit">정책 제안하기</button>
+                                    </form>
+
+                                    <div style={{marginTop: '30px'}}>
+                                        <h4 style={{color: '#667eea', marginBottom: '15px'}}>
+                                            제안된 정책들 ({policies.length}개)
+                                        </h4>
+                                        {policies.length === 0 ? (
+                                            <p style={{color: '#999', textAlign: 'center', padding: '20px'}}>
+                                                아직 제안된 정책이 없습니다. 첫 번째 정책을 제안해보세요!
+                                            </p>
+                                        ) : (
+                                            policies.map(policy => (
+                                                <div key={policy.id} className="policy-card">
+                                                    <div className="policy-title">{policy.title}</div>
+                                                    <div className="policy-content">{policy.content}</div>
+                                                    <div className="vote-buttons">
+                                                        <button 
+                                                            className="vote-btn agree"
+                                                            onClick={() => handleVote(policy.id, 'agree')}
+                                                        >
+                                                            찬성 <span className="vote-count">{policy.agree}</span>
+                                                        </button>
+                                                        <button 
+                                                            className="vote-btn disagree"
+                                                            onClick={() => handleVote(policy.id, 'disagree')}
+                                                        >
+                                                            반대 <span className="vote-count">{policy.disagree}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="section-title">자유 토론</div>
+                                <div className="discussion-section">
+                                    <form onSubmit={(e) => handleCommentSubmit(e, 'topic1')}>
+                                        <div className="form-group">
+                                            <label>이름</label>
+                                            <input type="text" name="author" required placeholder="이름을 입력하세요" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>의견</label>
+                                            <textarea name="comment" required 
+                                                      placeholder="AI 교육 격차 해소를 위한 여러분의 의견을 자유롭게 작성해주세요"></textarea>
+                                        </div>
+                                        <button type="submit">의견 등록</button>
+                                    </form>
+
+                                    <div className="comments-list">
+                                        <h4 style={{color: '#667eea', margin: '20px 0 15px 0'}}>
+                                            참여자 의견 ({comments.topic1.length}개)
+                                        </h4>
+                                        {comments.topic1.length === 0 ? (
+                                            <p style={{color: '#999', textAlign: 'center', padding: '20px'}}>
+                                                아직 등록된 의견이 없습니다. 첫 번째 의견을 남겨보세요!
+                                            </p>
+                                        ) : (
+                                            [...comments.topic1].reverse().map((comment, index) => (
+                                                <div key={index} className="comment-item">
+                                                    <div className="comment-author">{comment.author}</div>
+                                                    <div className="comment-date">{comment.date}</div>
+                                                    <div className="comment-text">{comment.text}</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'topic2' && (
+                        <div>
+                            <div className="content-card">
+                                <h2 className="topic-title">발제 2: AI 교육, '무엇을' 가르칠 것인가보다 '어떻게' 가르칠 것인가가 더 중요하다</h2>
+                                <p className="topic-description">
+                                    AI 교육의 성공은 단순히 기술적 지식을 전달하는 것이 아니라, 
+                                    학생들이 비판적 사고와 창의적 문제해결 능력을 기를 수 있도록 하는 교육 방법론에 달려 있습니다. 
+                                    좋은 AI 교육과 그렇지 못한 교육의 차이를 분석하고, 바람직한 방향을 모색해봅시다.
+                                </p>
+
+                                <div className="section-title">안좋은 AI 교육 사례와 개선 방안</div>
+                                <div className="discussion-section">
+                                    <form onSubmit={handleCaseSubmit}>
+                                        <div className="form-group">
+                                            <label>안좋은 사례 (문제점)</label>
+                                            <textarea name="problem" required 
+                                                      placeholder="예: 학생들에게 AI 도구의 사용법만 단순히 암기시키는 교육"></textarea>
+                                        </div>
+                                        <div className="form-group">
+                                            <label>개선 방안</label>
+                                            <textarea name="solution" required 
+                                                      placeholder="예: AI의 작동 원리를 이해하고, 윤리적 사용 방법을 함께 토론하는 프로젝트 기반 학습"></textarea>
+                                        </div>
+                                        <button type="submit">사례 등록하기</button>
+                                    </form>
+
+                                    <div style={{marginTop: '30px'}}>
+                                        <h4 style={{color: '#667eea', marginBottom: '15px'}}>
+                                            등록된 사례 분석 ({cases.length}개)
+                                        </h4>
+                                        {cases.length === 0 ? (
+                                            <p style={{color: '#999', textAlign: 'center', padding: '20px'}}>
+                                                아직 등록된 사례가 없습니다. 첫 번째 사례를 등록해보세요!
+                                            </p>
+                                        ) : (
+                                            cases.map(caseItem => (
+                                                <div key={caseItem.id} style={{marginBottom: '20px'}}>
+                                                    <div className="case-study">
+                                                        <div className="case-study-title">❌ 문제점</div>
+                                                        <div>{caseItem.problem}</div>
+                                                    </div>
+                                                    <div className="solution">
+                                                        <div className="solution-title">✅ 개선 방안</div>
+                                                        <div>{caseItem.solution}</div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="section-title">좋은 AI 교육의 원칙</div>
+                                <div className="discussion-section">
+                                    <div style={{padding: '20px', background: 'white', borderRadius: '10px'}}>
+                                        <h4 style={{color: '#764ba2', marginBottom: '15px'}}>핵심 원칙</h4>
+                                        <ul style={{lineHeight: '2', marginLeft: '20px'}}>
+                                            <li><strong>개념 이해 중심:</strong> 단순 도구 사용법이 아닌 AI의 작동 원리 이해</li>
+                                            <li><strong>윤리적 사고:</strong> AI의 사회적 영향과 윤리적 이슈에 대한 토론</li>
+                                            <li><strong>프로젝트 기반:</strong> 실제 문제를 해결하는 프로젝트 수행</li>
+                                            <li><strong>비판적 사고:</strong> AI의 한계와 편향성을 인식하는 능력 배양</li>
+                                            <li><strong>협력 학습:</strong> 팀 프로젝트를 통한 협업 능력 개발</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div className="section-title">자유 토론</div>
+                                <div className="discussion-section">
+                                    <form onSubmit={(e) => handleCommentSubmit(e, 'topic2')}>
+                                        <div className="form-group">
+                                            <label>이름</label>
+                                            <input type="text" name="author" required placeholder="이름을 입력하세요" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>의견</label>
+                                            <textarea name="comment" required 
+                                                      placeholder="효과적인 AI 교육 방법에 대한 여러분의 의견을 공유해주세요"></textarea>
+                                        </div>
+                                        <button type="submit">의견 등록</button>
+                                    </form>
+
+                                    <div className="comments-list">
+                                        <h4 style={{color: '#667eea', margin: '20px 0 15px 0'}}>
+                                            참여자 의견 ({comments.topic2.length}개)
+                                        </h4>
+                                        {comments.topic2.length === 0 ? (
+                                            <p style={{color: '#999', textAlign: 'center', padding: '20px'}}>
+                                                아직 등록된 의견이 없습니다. 첫 번째 의견을 남겨보세요!
+                                            </p>
+                                        ) : (
+                                            [...comments.topic2].reverse().map((comment, index) => (
+                                                <div key={index} className="comment-item">
+                                                    <div className="comment-author">{comment.author}</div>
+                                                    <div className="comment-date">{comment.date}</div>
+                                                    <div className="comment-text">{comment.text}</div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="content-card" style={{marginTop: '30px', textAlign: 'center', background: 'linear-gradient(135deg, #f8f9ff 0%, #e8eaff 100%)'}}>
+                        <h3 style={{color: '#667eea', marginBottom: '15px'}}>💡 함께 만들어가는 AI 교육의 미래</h3>
+                        <p style={{color: '#666', lineHeight: '1.8'}}>
+                            여러분의 소중한 의견이 더 나은 AI 교육 정책과 방향을 만드는 데 기여합니다.<br/>
+                            자유롭게 의견을 나누고, 서로의 생각을 존중하며 건설적인 토론을 이어가주세요.<br/>
+                            <strong>{mode === 'firebase' ? '🔥 Firebase 실시간 동기화 모드' : '💾 로컬 저장 모드'}</strong>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<DiscussionPlatform />, document.getElementById('root'));
+    </script>
+</body>
+</html>
